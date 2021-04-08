@@ -1,0 +1,110 @@
+'use strict';
+
+//var logger = require('./logger');
+//var utils = require('./utils');
+
+const SENSOR_PORT = 8000;
+const SENSOR_HOST = "127.0.0.1";
+const HTTP_PORT = 80;
+
+var net = require("net");
+var client = new net.Socket();
+
+var express = require('express');
+var app = express();
+
+//app.set('view options', { layout: false });
+//app.set('view engine', 'ejs');
+
+app.use('/', express.static('public'));
+
+function main() {
+
+    var intervalConnect = false;
+
+    function launchIntervalConnect() {
+        if(false != intervalConnect) return
+        intervalConnect = setInterval(connect, 5000)
+    }
+    
+    function clearIntervalConnect() {
+        if(false == intervalConnect) return
+        clearInterval(intervalConnect)
+        intervalConnect = false
+    }
+
+    console.log('Starting...');
+
+    var http_server = require('http').Server(app);
+    var socketio = require('socket.io')(http_server);
+
+    http_server.listen(HTTP_PORT, () => {
+        console.log('listening on *:' + HTTP_PORT);
+    });
+
+    socketio.on('connection', (socket) => {
+        clearIntervalConnect();
+    	console.log('sensor connected');
+	    socket.on('disconnect', () => {
+	        console.log('sensor disconnected');
+        });
+    });
+
+    client.on("error", function() {
+            console.log('connect error:' + SENSOR_HOST);
+            //await new Promise(r => setTimeout(r, 1000));
+            //if (n === 10) throw err;
+            //(async () => {
+            //    await new Promise(r => setTimeout(r, 1000));
+            //    console.log("retry connect");
+            //    client.connect(SENSOR_PORT, SENSOR_HOST, function() {
+            //        console.log("connect (" + n + ") to: " + SENSOR_HOST + ":" + SENSOR_PORT);
+            //        n++;
+            //    });
+            //})();
+            launchIntervalConnect();
+    });
+
+    client.on("data", function(data) {
+    	//console.log(data.toString());
+        //socketio.emit('message', data.toString());
+        
+        var s = data.toString();
+        // Clear non printable character and omit error
+        s = s.replace(/\\n/g, "\\n")
+            .replace(/\\'/g, "\\'")
+            .replace(/\\"/g, '\\"')
+            .replace(/\\&/g, "\\&")
+            .replace(/\\r/g, "\\r")
+            .replace(/\\t/g, "\\t")
+            .replace(/\\b/g, "\\b")
+            .replace(/\\f/g, "\\f");
+        s = s.replace(/[\u0000-\u0019]+/g,"");
+        socketio.emit('message', s);
+    });
+
+    client.on("close", function() {
+        console.log("disconnect from: " + SENSOR_HOST + ":" + SENSOR_PORT);
+        launchIntervalConnect();
+    });
+
+    client.on("end", function() {
+        console.log("end from: " + SENSOR_HOST + ":" + SENSOR_PORT);
+        launchIntervalConnect();
+    });
+
+    client.connect(SENSOR_PORT, SENSOR_HOST, function() {
+        console.log("connect to: " + SENSOR_HOST + ":" + SENSOR_PORT);
+    });
+
+    //app.get('/', (req, res) => {
+    //  res.sendFile(__dirname + 'index.html');
+    //});
+
+    console.log('OK');
+}
+
+if (require.main === module) {
+    main();
+    console.log('main exit');
+}

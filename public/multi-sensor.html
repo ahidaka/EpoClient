@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>ローカルグラフ表示</title>
+<!--
+<script type="text/javascript" src="./jquery-2.1.4.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="./d3.min.js"></script>
+<script src="./epoch.min.js"></script>
+<script src="./data.js"></script>
+<link rel="stylesheet" type="text/css" href="./epoch.min.css">
+ -->
+
+<!--<link rel="stylesheet" type="text/css" href="css/tests.css">-->
+<link rel="stylesheet" type="text/css" href="tests.css">
+<!--<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>-->
+<script src="jquery-1.11.1.js"></script>
+<!--<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>-->
+<script src="http://d3js.org/d3.v3.js" charset="utf-8"></script>
+<!--<script src="../../dist/js/epoch.js"></script>-->
+<script src="epoch.js"></script>
+<!--<link rel="stylesheet" type="text/css" href="../../dist/css/epoch.css">-->
+<link rel="stylesheet" type="text/css" href="epoch.css">
+
+<script>
+    var nextTime = (function() {
+        var currentTime = parseInt(new Date().getTime() / 1000);
+        return function() { return currentTime++; }
+    })();
+</script>
+
+<style>
+    .gauges {
+        display: inline-block;
+        margin: 1em;
+    }
+</style>
+
+</head>
+<body>
+    
+<h1>ローカルグラフ表示</h1>
+
+<!-- TP HU IL Gauge -->
+<div id="gauge-tp" class="gauges">
+    <h2>TP 温度センサー</h2>
+    <div class="epoch gauge-small"></div>
+</div>
+<div id="gauge-hu" class="gauges">
+    <h2>HU 湿度センサー</h2>
+    <div class="epoch gauge-small"></div>
+</div>
+<div id="gauge-il" class="gauges">
+    <h2>IL 照度センサー</h2>
+    <div class="epoch gauge-small"></div>
+</div>
+<script>
+    //
+    // Gauge display
+    //
+    $(function() {
+        var datas = {
+            TP: 0.0,
+            HU: 0.0,
+            IL: 0,
+        };
+
+        var props = {
+            TP: { type: 'time.gauge', value: 0, format: function(v) { return Math.abs((v*100).toFixed(1)) + "℃"; } },
+            HU: { type: 'time.gauge', value: 0, format: function(v) { return Math.abs((v*100).toFixed(1)) + "%"; } },
+            IL: { type: 'time.gauge', value: 0, format: function(v) { return Math.abs((v*1000).toFixed(0)) + "lx"; } },
+        };
+
+        var gauges = {
+            TP: $('#gauge-tp .epoch').epoch(props["TP"]),
+            HU: $('#gauge-hu .epoch').epoch(props["HU"]),
+            IL: $('#gauge-il .epoch').epoch(props["IL"]),
+        };
+
+        function updateGauge() {
+            for (var point in datas) {
+                gauges[point].update(Math.abs(datas[point]));
+            }
+        }
+
+        datas["TP"] = (Math.random() * 5 + 22) * 0.01;
+        datas["HU"] = (Math.random() * 20 + 50) * 0.01;
+
+        //max = (Math.log10(100000) - 1) * 0.25
+        //min = (Math.log10(100) - 1) * 0.25
+        //var sample = (Math.random() * 500) + 600; // 600 ~ 1100
+        //datas["IL"] = (Math.log10(sample) - 1) * 0.25
+        datas["IL"] = (Math.random() * 500 + 500) * 0.001;
+
+        setInterval(updateGauge, 1000);
+    });
+</script>
+
+<!-- AS CO display -->
+<div>
+    <h2>AS 加速度状態 CO 開閉状態</h2>
+    <p>
+        <font size="14" color="blue">AS:通常</font>
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        <font size="14" color="blue">CO:開</font>
+    </p>
+</div>
+
+<!-- TP HU IL CO line -->
+<div id="tphuilco-line" class="test">
+    <h2>TP 温度, HU 湿度, IL 照度, CO 開閉</h2>
+    <div class="epoch"></div>
+</div>
+
+<script>
+    $(function() {
+        var data = [
+            {
+            label: 'TP',
+            values: [],
+            range: [0, 100]
+            },
+            {
+            label: 'HU',
+            values: [],
+            range: [0, 100]
+            },
+            {
+            label: 'IL',
+            values: [],
+            range: [0, 1000]
+            },
+            {
+            label: 'CO',
+            values: [],
+            range: [-1, 2]
+            }
+        ];
+        var length = 50;
+
+        for (var i = 0; i < length; i++) {
+            var tp = Math.random() * 5 + 22;
+            var hu = Math.random() * 20 + 50;
+            var il = Math.random() * 500 + 500;
+            var co = Math.floor((Math.random() + 0.5));
+            var time = nextTime();
+            data[0].values.push({time: time, y: tp});
+            data[1].values.push({time: time, y: hu});
+            data[2].values.push({time: time, y: il});
+            data[3].values.push({time: time, y: co});
+        }
+
+        $('#tphuilco-line .epoch').epoch({
+            type: 'time.line',
+            axes: ['left', 'right', 'bottom'],
+            data: data,
+            range: {
+                right: [-1, 2],
+                left: [0, 100]
+            }
+        });
+    });
+</script>
+
+<!-- AX AY AZ AS line -->
+<div id="accel-line" class="test">
+    <h2>AX AY AZ 加速度, AS 状態</h2>
+    <p>
+    </p>
+    <div class="epoch"></div>
+</div>
+
+<script>
+    $(function() {
+        var data = [
+            {
+            label: 'AX',
+            values: [],
+            range: [-3, 3]
+            },
+            {
+            label: 'AY',
+            values: [],
+            range: [-3, 3]
+            },
+            {
+            label: 'AZ',
+            values: [],
+            range: [-3, 3]
+            },
+            {
+            label: 'AS',
+            values: [],
+            range: [0, 4]
+            }
+        ];
+        var length = 50;
+
+        for (var i = 0; i < length; i++) {
+            var ax = Math.random() * 1.5 - 2;
+            var ay = Math.random() * 3 - 2;
+            var az = Math.random() * 1 + 1.2;
+            var as = Math.floor((Math.random() * 3));
+            var time = nextTime();
+            data[0].values.push({time: time, y: ax});
+            data[1].values.push({time: time, y: ay});
+            data[2].values.push({time: time, y: az});
+            data[3].values.push({time: time, y: as});
+        }
+
+        $('#accel-line .epoch').epoch({
+            type: 'time.line',
+            axes: ['left', 'right', 'bottom'],
+            data: data,
+            range: {
+                right: [-1, 3],
+                left: [-3, 3]
+            }
+        });
+    });
+    </script>
+
+</body>
+</html>
